@@ -25,6 +25,7 @@
             rel="stylesheet"
             href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         />
+
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
             :root {
@@ -55,6 +56,38 @@
                 margin-bottom: 2rem;
                 color: var(--primary);
             }
+            .fullscreen-button {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 1000;
+                background: white;
+                border: 2px solid rgba(0, 0, 0, 0.2);
+                border-radius: 4px;
+                padding: 5px;
+                cursor: pointer;
+            }
+
+            .fullscreen-button:hover {
+                background: #f4f4f4;
+            }
+
+            .map-container {
+                position: relative;
+                width: 100%;
+                height: clamp(300px, 50vh, 400px);
+                margin-bottom: 24px;
+            }
+
+            .fullscreen {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw !important;
+                height: 100vh !important;
+                z-index: 9999;
+                margin: 0;
+            }
             .day-container {
                 background-color: white;
                 border-radius: 12px;
@@ -63,13 +96,32 @@
                 box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
                 border: 1px solid var(--border);
             }
-            h2 {
-                color: var(--primary);
-                font-size: clamp(1.2rem, 4vw, 1.5rem);
-                font-weight: 600;
+            .day-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
                 margin-bottom: 1.5rem;
                 padding-bottom: 0.5rem;
                 border-bottom: 1px solid var(--border);
+            }
+            .day-header h2 {
+                margin: 0;
+                padding: 0;
+                border: none;
+                color: var(--primary);
+                font-size: clamp(1.2rem, 4vw, 1.5rem);
+                font-weight: 600;
+            }
+            .distance {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                color: var(--muted);
+                font-size: 0.9rem;
+                font-weight: 500;
+            }
+            .distance i {
+                font-size: 1.1rem;
             }
             .place-item {
                 background-color: white;
@@ -93,21 +145,18 @@
                 flex-wrap: nowrap;
                 justify-content: space-between;
             }
-
             .left-content {
                 display: flex;
                 align-items: center;
                 gap: 12px;
                 flex: 1;
             }
-
             .info-row {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 margin-left: 36px;
             }
-
             .place-meta {
                 display: flex;
                 align-items: center;
@@ -115,12 +164,27 @@
                 color: var(--muted);
                 font-size: clamp(0.75rem, 2vw, 0.875rem);
             }
-
             .ticket-checkbox {
                 margin-top: 0;
                 font-size: 0.875rem;
                 color: var(--muted);
                 white-space: nowrap;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .ticket-checkbox input[type="checkbox"] {
+                width: 16px;
+                height: 16px;
+                cursor: pointer;
+            }
+            .ticket-checkbox label {
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 4px 0;
             }
             .right-content {
                 display: flex;
@@ -171,12 +235,10 @@
                 align-items: center;
                 gap: 4px;
             }
-
             #map {
                 width: 100%;
-                height: clamp(300px, 50vh, 400px);
+                height: 100%;
                 border-radius: 12px;
-                margin-bottom: 24px;
             }
             .leaflet-popup-content-wrapper {
                 border-radius: 8px;
@@ -202,18 +264,15 @@
             .map-marker:hover {
                 background-color: #27272a;
             }
-
             .ticket-link.free {
                 background-color: #f3f4f6;
                 color: #6b7280;
                 border: 1px solid #e5e7eb;
             }
-
             .ticket-link.free:hover {
                 opacity: 1;
                 background-color: #e5e7eb;
             }
-
             @media (max-width: 600px) {
                 body {
                     padding: 12px;
@@ -264,13 +323,30 @@
         <h1 style="margin: 0; font-size: 1.5rem">Roma in 2 days</h1>
     </header>
     <body>
-        <div id="map"></div>
+        <div class="map-container">
+            <div id="map"></div>
+            <button class="fullscreen-button" onclick="toggleFullscreen()">
+                <i class="ri-fullscreen-line"></i>
+            </button>
+        </div>
         <div class="day-container">
-            <h2>DÍA 1</h2>
+            <div class="day-header">
+                <h2>DAY 1</h2>
+                <span class="distance">
+                    <i class="ri-route-line"></i>
+                    <span id="day1-distance"></span> km
+                </span>
+            </div>
             <div id="day1-places"></div>
         </div>
         <div class="day-container">
-            <h2>DÍA 2</h2>
+            <div class="day-header">
+                <h2>DAY 2</h2>
+                <span class="distance">
+                    <i class="ri-route-line"></i>
+                    <span id="day2-distance"></span> km
+                </span>
+            </div>
             <div id="day2-places"></div>
         </div>
         <script>
@@ -339,7 +415,6 @@
                     coords: [41.8892, 12.4694],
                 },
             ];
-
             const day2Places = [
                 {
                     name: "Basílica de San Pedro",
@@ -406,40 +481,179 @@
                 },
             ];
 
+            const hotel = {
+                name: "Hotel Milton Roma",
+                coords: [41.8942, 12.4989],
+                url: "https://maps.app.goo.gl/2WwdACHQbgsBEQxq8",
+            };
+
+            function toggleFullscreen() {
+                const mapContainer = document.querySelector(".map-container");
+                const button = document.querySelector(".fullscreen-button i");
+
+                if (!mapContainer.classList.contains("fullscreen")) {
+                    mapContainer.classList.add("fullscreen");
+                    button.classList.remove("ri-fullscreen-line");
+                    button.classList.add("ri-fullscreen-exit-line");
+                    map.invalidateSize();
+                } else {
+                    mapContainer.classList.remove("fullscreen");
+                    button.classList.remove("ri-fullscreen-exit-line");
+                    button.classList.add("ri-fullscreen-line");
+                    map.invalidateSize();
+                }
+            }
+
+            // Add escape key listener
+            document.addEventListener("keydown", function (e) {
+                if (e.key === "Escape") {
+                    const mapContainer =
+                        document.querySelector(".map-container");
+                    const button = document.querySelector(
+                        ".fullscreen-button i",
+                    );
+                    if (mapContainer.classList.contains("fullscreen")) {
+                        mapContainer.classList.remove("fullscreen");
+                        button.classList.remove("ri-fullscreen-exit-line");
+                        button.classList.add("ri-fullscreen-line");
+                        map.invalidateSize();
+                    }
+                }
+            });
+
+            function calculateDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371; // Earth's radius in kilometers
+                const dLat = ((lat2 - lat1) * Math.PI) / 180;
+                const dLon = ((lon2 - lon1) * Math.PI) / 180;
+                const a =
+                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos((lat1 * Math.PI) / 180) *
+                        Math.cos((lat2 * Math.PI) / 180) *
+                        Math.sin(dLon / 2) *
+                        Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+            }
+
+            function calculateDayDistance(places) {
+                let totalDistance = 0;
+                for (let i = 0; i < places.length - 1; i++) {
+                    totalDistance += calculateDistance(
+                        places[i].coords[0],
+                        places[i].coords[1],
+                        places[i + 1].coords[0],
+                        places[i + 1].coords[1],
+                    );
+                }
+                // Add distance from hotel to first place and from last place back to hotel
+                totalDistance += calculateDistance(
+                    hotel.coords[0],
+                    hotel.coords[1],
+                    places[0].coords[0],
+                    places[0].coords[1],
+                );
+                totalDistance += calculateDistance(
+                    places[places.length - 1].coords[0],
+                    places[places.length - 1].coords[1],
+                    hotel.coords[0],
+                    hotel.coords[1],
+                );
+                return totalDistance.toFixed(1);
+            }
+
             const allPlaces = [...day1Places, ...day2Places];
-            const map = L.map("map").setView([41.9028, 12.4964], 18.25);
+            const map = L.map("map").setView([41.9028, 12.4964], 14);
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 maxZoom: 19,
                 attribution: "© OpenStreetMap contributors",
             }).addTo(map);
+
             allPlaces.forEach((place, index) => {
                 const marker = L.marker(place.coords, {
                     icon: L.divIcon({
                         className: "custom-div-icon",
-                        html: `<a href="${place.url}" target="_blank"><div class="map-marker">${index + 1}</div></a>`,
+                        html: `<div class="map-marker">${index + 1}</div>`,
                         iconSize: [24, 24],
                         iconAnchor: [12, 12],
                     }),
                 }).addTo(map);
+
                 const popup = L.popup({
-                    closeButton: false,
-                    autoClose: false,
-                    closeOnEscapeKey: false,
-                    closeOnClick: false,
-                })
-                    .setLatLng(place.coords)
-                    .setContent(
-                        `<div style="padding: 8px;">
-                            <strong>${place.name}</strong><br>
-                            <small>Duration: ${place.time}</small>
-                        </div>`,
-                    )
-                    .openOn(map);
+                    closeButton: true,
+                    autoClose: true,
+                    closeOnEscapeKey: true,
+                    closeOnClick: true,
+                }).setContent(
+                    `<div style="padding: 8px;">
+                                                          <strong>${place.name}</strong><br>
+                                                          <small>Duration: ${place.time}</small><br>
+                                                          <a href="${place.url}"
+                                                              target="_blank"
+                                                              style="display: inline-block;
+                                                                      margin-top: 8px;
+                                                                      padding: 4px 8px;
+                                                                      background-color: #18181b;
+                                                                      color: white;
+                                                                      text-decoration: none;
+                                                                      border-radius: 4px;
+                                                                      font-size: 12px;">
+                                                              <i class="ri-map-pin-line"></i> View in Google Maps
+                                                          </a>
+                                                      </div>`,
+                );
+
+                marker.bindPopup(popup);
             });
-            const bounds = L.latLngBounds(
-                allPlaces.map((place) => place.coords),
+
+            const hotelMarker = L.marker(hotel.coords, {
+                icon: L.divIcon({
+                    className: "custom-div-icon",
+                    html: `<div class="map-marker" style="background-color: #dc2626;">
+                                                              <i class="ri-hotel-line"></i>
+                                                             </div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12],
+                }),
+            }).addTo(map);
+
+            const hotelPopup = L.popup({
+                closeButton: true,
+                autoClose: true,
+                closeOnEscapeKey: true,
+                closeOnClick: true,
+            }).setContent(
+                `<div style="padding: 8px;">
+                                                      <strong>${hotel.name}</strong><br>
+                                                      <small>Your accommodation</small><br>
+                                                      <a href="${hotel.url}"
+                                                         target="_blank"
+                                                         style="display: inline-block;
+                                                                margin-top: 8px;
+                                                                padding: 4px 8px;
+                                                                background-color: #dc2626;
+                                                                color: white;
+                                                                text-decoration: none;
+                                                                border-radius: 4px;
+                                                                font-size: 12px;">
+                                                          <i class="ri-map-pin-line"></i> View in Google Maps
+                                                      </a>
+                                                  </div>`,
             );
+
+            hotelMarker.bindPopup(hotelPopup);
+
+            const bounds = L.latLngBounds([
+                ...allPlaces.map((place) => place.coords),
+                hotel.coords,
+            ]);
             map.fitBounds(bounds, { padding: [50, 50] });
+
+            // Calculate and display distances
+            document.getElementById("day1-distance").textContent =
+                calculateDayDistance(day1Places);
+            document.getElementById("day2-distance").textContent =
+                calculateDayDistance(day2Places);
+
             function setCookie(name, value, days = 365) {
                 const d = new Date();
                 d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
@@ -447,67 +661,73 @@
                 document.cookie =
                     name + "=" + value + ";" + expires + ";path=/";
             }
+
             function getCookie(name) {
                 const value = `; ${document.cookie}`;
                 const parts = value.split(`; ${name}=`);
                 if (parts.length === 2) return parts.pop().split(";").shift();
             }
+
             function handleTicketCheck(index, checked) {
                 setCookie(`ticket_${index}`, checked);
             }
             function createPlaceElement(place, index) {
                 const isChecked = getCookie(`ticket_${index}`) === "true";
                 return `
-                    <div class="place-item">
-                        <div class="place-content">
-                            <div onclick="window.open('${place.url}', '_blank')" style="cursor: pointer;">
-                                <div class="place-header">
-                                    <div class="left-content">
-                                        <div class="number">${index + 1}</div>
-                                        <span class="place-name">${place.name}</span>
-                                    </div>
-                                    ${
-                                        place.ticket === "FREE"
-                                            ? `<span class="ticket-link free" style="cursor: default;">
-                                                 <i class="ri-ticket-2-line"></i>
-                                                 FREE
-                                               </span>`
-                                            : place.ticket
-                                              ? `<a href="${place.ticket}"
-                                                  target="_blank"
-                                                  class="ticket-link"
-                                                  onclick="event.stopPropagation()">
-                                                   <i class="ri-ticket-2-line"></i>
-                                                   Tickets
-                                               </a>`
-                                              : ""
-                                    }
-                                </div>
-                                <div class="info-row">
-                                    <span class="place-meta">
-                                        <span class="time-icon">
-                                            <i class="ri-time-line"></i>
-                                            ${place.time}
-                                        </span>
-                                    </span>
-                                    ${
-                                        place.ticket && place.ticket !== "FREE"
-                                            ? `<div class="ticket-checkbox" onclick="event.stopPropagation()">
-                                                   <label>
-                                                       <input type="checkbox"
-                                                              ${isChecked ? "checked" : ""}
-                                                              onchange="handleTicketCheck(${index}, this.checked)">
-                                                       Ticket purchased
-                                                   </label>
-                                               </div>`
-                                            : ""
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                                                                <div class="place-item">
+                                                                    <div class="place-content">
+                                                                        <div onclick="window.open('${place.url}', '_blank')" style="cursor: pointer;">
+                                                                            <div class="place-header">
+                                                                                <div class="left-content">
+                                                                                    <div class="number">${index + 1}</div>
+                                                                                    <span class="place-name">${place.name}</span>
+                                                                                </div>
+                                                                                ${
+                                                                                    place.ticket ===
+                                                                                    "FREE"
+                                                                                        ? `<span class="ticket-link free" style="cursor: default;">
+                                                                                             <i class="ri-ticket-2-line"></i>
+                                                                                             FREE
+                                                                                           </span>`
+                                                                                        : place.ticket
+                                                                                          ? `<a href="${place.ticket}"
+                                                                                              target="_blank"
+                                                                                              class="ticket-link"
+                                                                                              onclick="event.stopPropagation()">
+                                                                                               <i class="ri-ticket-2-line"></i>
+                                                                                               Tickets
+                                                                                           </a>`
+                                                                                          : ""
+                                                                                }
+                                                                            </div>
+                                                                            <div class="info-row">
+                                                                                <span class="place-meta">
+                                                                                    <span class="time-icon">
+                                                                                        <i class="ri-time-line"></i>
+                                                                                        ${place.time}
+                                                                                    </span>
+                                                                                </span>
+                                                                                ${
+                                                                                    place.ticket &&
+                                                                                    place.ticket !==
+                                                                                        "FREE"
+                                                                                        ? `<div class="ticket-checkbox" onclick="event.stopPropagation()">
+                                                                                               <label>
+                                                                                                   <input type="checkbox"
+                                                                                                          ${isChecked ? "checked" : ""}
+                                                                                                          onchange="handleTicketCheck(${index}, this.checked)">
+                                                                                                   Ticket purchased
+                                                                                               </label>
+                                                                                           </div>`
+                                                                                        : ""
+                                                                                }
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            `;
             }
+
             document.getElementById("day1-places").innerHTML = day1Places
                 .map((place, index) => createPlaceElement(place, index))
                 .join("");
@@ -536,7 +756,6 @@
                 alt="Logo"
                 style="height: 60px; margin-bottom: 1rem"
             />
-
             <p
                 style="
                     font-weight: 500;
