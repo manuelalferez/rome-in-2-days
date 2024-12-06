@@ -49,6 +49,74 @@
                 background-color: #fafafa;
                 color: var(--primary);
             }
+            .weather-container {
+                background-color: white;
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 24px;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                border: 1px solid var(--border);
+            }
+
+            .weather-title {
+                font-size: 1rem;
+                font-weight: 600;
+                margin-bottom: 1rem;
+                color: var(--primary);
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .weather-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 12px;
+            }
+
+            .weather-card {
+                padding: 12px;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+            }
+
+            .weather-date {
+                font-weight: 500;
+                font-size: 0.9rem;
+                margin-bottom: 8px;
+                color: var(--primary);
+                padding-bottom: 4px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .weather-times {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .weather-time-slot {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                font-size: 0.8rem;
+            }
+
+            .weather-time-label {
+                color: var(--muted);
+                width: 65px;
+            }
+
+            .weather-temp {
+                font-weight: 500;
+                color: var(--primary);
+            }
+
+            .weather-icon {
+                display: flex;
+                align-items: center;
+                color: var(--primary);
+            }
             h1 {
                 text-align: center;
                 font-size: clamp(1.8rem, 5vw, 2.5rem);
@@ -320,7 +388,7 @@
         "
     >
         <img src="logo.png" alt="Logo" style="height: 64px" />
-        <h1 style="margin: 0; font-size: 1.5rem">Roma in 2 days</h1>
+        <h1 style="margin: 0; font-size: 1.5rem">Rome in 2 days</h1>
     </header>
     <body>
         <div class="map-container">
@@ -328,6 +396,14 @@
             <button class="fullscreen-button" onclick="toggleFullscreen()">
                 <i class="ri-fullscreen-line"></i>
             </button>
+        </div>
+
+        <div class="weather-container">
+            <h2 class="weather-title">
+                <i class="ri-sun-line"></i>
+                Weather in Rome
+            </h2>
+            <div id="weather-data" class="weather-cards"></div>
         </div>
         <div class="day-container">
             <div class="day-header">
@@ -350,6 +426,93 @@
             <div id="day2-places"></div>
         </div>
         <script>
+            async function fetchWeather() {
+                try {
+                    const response = await fetch(
+                        "https://wttr.in/Rome?format=j1",
+                    );
+                    if (!response.ok)
+                        throw new Error("Weather data not available");
+                    const data = await response.json();
+
+                    const weatherContainer =
+                        document.getElementById("weather-data");
+                    const forecast = data.weather.slice(0, 3); // Get 3 days
+
+                    weatherContainer.innerHTML = forecast
+                        .map((day, index) => {
+                            const date = new Date();
+                            date.setDate(date.getDate() + index);
+                            const dateStr = date.toLocaleDateString("en-US", {
+                                weekday: "short",
+                                month: "short",
+                                day: "numeric",
+                            });
+
+                            // Get temperatures for different times of day
+                            const morning = day.hourly[4]; // 8AM
+                            const afternoon = day.hourly[6]; // 12PM
+                            const evening = day.hourly[7]; // 2PM
+
+                            return `
+                        <div class="weather-card">
+                            <div class="weather-date">${dateStr}</div>
+                            <div class="weather-times">
+                                <div class="weather-time-slot">
+                                    <span class="weather-time-label">Morning</span>
+                                    <span class="weather-temp">${morning.tempC}°</span>
+                                    <span class="weather-icon">
+                                        <i class="ri-${getWeatherIcon(morning.weatherCode)}"></i>
+                                    </span>
+                                </div>
+                                <div class="weather-time-slot">
+                                    <span class="weather-time-label">Afternoon</span>
+                                    <span class="weather-temp">${afternoon.tempC}°</span>
+                                    <span class="weather-icon">
+                                        <i class="ri-${getWeatherIcon(afternoon.weatherCode)}"></i>
+                                    </span>
+                                </div>
+                                <div class="weather-time-slot">
+                                    <span class="weather-time-label">Evening</span>
+                                    <span class="weather-temp">${evening.tempC}°</span>
+                                    <span class="weather-icon">
+                                        <i class="ri-${getWeatherIcon(evening.weatherCode)}"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                        })
+                        .join("");
+                } catch (error) {
+                    console.error("Error fetching weather:", error);
+                    document.getElementById("weather-data").innerHTML = `
+                    <div class="weather-card">
+                        <div class="weather-desc">Weather data unavailable</div>
+                    </div>
+                `;
+                }
+            }
+
+            // Helper function to get weather icon
+            function getWeatherIcon(code) {
+                const codeNum = parseInt(code);
+                if (codeNum <= 113) return "sun-line";
+                if (codeNum <= 116) return "sun-cloudy-line";
+                if (codeNum <= 122) return "cloudy-line";
+                if (codeNum <= 143) return "mist-line";
+                if (codeNum <= 176) return "drizzle-line";
+                if (codeNum <= 200) return "heavy-showers-line";
+                if (codeNum <= 230) return "snowy-line";
+                if (codeNum <= 260) return "mist-line";
+                if (codeNum <= 266) return "drizzle-line";
+                if (codeNum <= 302) return "rainy-line";
+                if (codeNum <= 332) return "snowy-line";
+                return "cloudy-line";
+            }
+
+            // Call the weather function when the page loads
+            fetchWeather();
             const day1Places = [
                 {
                     name: "Coliseo",
