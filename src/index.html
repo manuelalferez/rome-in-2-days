@@ -790,6 +790,64 @@
         attribution: "© OpenStreetMap contributors",
       }).addTo(map);
 
+      // Add location control and marker
+      let userLocationMarker = null;
+      let userLocationCircle = null;
+
+      function onLocationFound(e) {
+        const radius = e.accuracy / 2;
+
+        // Remove previous markers if they exist
+        if (userLocationMarker) {
+          map.removeLayer(userLocationMarker);
+        }
+        if (userLocationCircle) {
+          map.removeLayer(userLocationCircle);
+        }
+
+        // Add user location marker
+        userLocationMarker = L.marker(e.latlng, {
+          icon: L.divIcon({
+            className: "custom-div-icon",
+            html: `<div class="map-marker" style="background-color: #2563eb;">
+                    <i class="ri-user-location-fill"></i>
+                   </div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+          }),
+        }).addTo(map);
+
+        // Add accuracy circle
+        userLocationCircle = L.circle(e.latlng, {
+          radius: radius,
+          color: "#2563eb",
+          fillColor: "#60a5fa",
+          fillOpacity: 0.2,
+        }).addTo(map);
+
+        userLocationMarker
+          .bindPopup(
+            "You are within " + radius.toFixed(0) + " meters of this point"
+          )
+          .openPopup();
+      }
+
+      function onLocationError(e) {
+        console.warn("Location error:", e.message);
+        // Silently fail instead of showing alert
+      }
+
+      map.on("locationfound", onLocationFound);
+      map.on("locationerror", onLocationError);
+
+      // Enable location tracking with timeout and maximum age options
+      map.locate({
+        watch: true,
+        enableHighAccuracy: true,
+        timeout: 10000, // 10 second timeout
+        maximumAge: 60000, // Accept cached positions up to 1 minute old
+      });
+
       allPlaces.forEach((place, index) => {
         const marker = L.marker(place.coords, {
           icon: L.divIcon({
