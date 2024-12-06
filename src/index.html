@@ -58,20 +58,43 @@
         border: 1px solid var(--border);
       }
 
+      .weather-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+      }
+
       .weather-title {
         font-size: 1rem;
         font-weight: 600;
-        margin-bottom: 1rem;
         color: var(--primary);
         display: flex;
         align-items: center;
         gap: 8px;
+        margin: 0;
+      }
+
+      .weather-toggle {
+        color: var(--muted);
+        transition: transform 0.2s ease;
+      }
+
+      .weather-toggle.open {
+        transform: rotate(180deg);
       }
 
       .weather-cards {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 12px;
+        margin-top: 16px;
+        display: none;
+      }
+
+      .weather-cards.open {
+        display: grid;
       }
 
       @media (max-width: 600px) {
@@ -404,10 +427,13 @@
   </header>
   <body>
     <div class="weather-container">
-      <h2 class="weather-title">
-        <i class="ri-sun-line"></i>
-        Weather in Rome
-      </h2>
+      <div class="weather-header" onclick="toggleWeather()">
+        <h2 class="weather-title">
+          <i class="ri-sun-line"></i>
+          Weather in Rome
+        </h2>
+        <i class="ri-arrow-down-s-line weather-toggle"></i>
+      </div>
       <div id="weather-data" class="weather-cards"></div>
     </div>
 
@@ -439,6 +465,13 @@
       <div id="day2-places"></div>
     </div>
     <script>
+      function toggleWeather() {
+        const weatherCards = document.getElementById("weather-data");
+        const toggle = document.querySelector(".weather-toggle");
+        weatherCards.classList.toggle("open");
+        toggle.classList.toggle("open");
+      }
+
       async function fetchWeather() {
         try {
           const response = await fetch("https://wttr.in/Rome?format=j1");
